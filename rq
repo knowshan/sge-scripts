@@ -1,0 +1,25 @@
+#!/usr/bin/env ruby
+require 'open3'
+
+js_name = ARGV[0]
+
+# Start-Open3 block 
+Open3.popen3("git ls-files #{js_name} --error-unmatch") do |stdin, stdout, stderr|
+  # Start-If: Check if job script is commited in git repo 
+  if stderr.read.empty?
+    qsub_op = `qsub #{js_name}`
+    latest_sha1 = `git log --pretty=%H -1 #{js_name}`
+    # Start-IO: Write job number and latest sha1 to a file
+    File.open('JobInfo.txt','a') do |f|
+      f.write("#{qsub_op.chomp}, #{latest_sha1} \n")
+    end
+    # End-IO Write job number and latest sha1 to a file
+  else
+    puts "Please commit job to repo"
+  end
+  # End-If Check if job script is commited in git repo
+end
+# End-Open3 block 
+
+
+
