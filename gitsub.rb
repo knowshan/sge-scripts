@@ -1,7 +1,12 @@
 #!/usr/bin/env ruby
 require 'open3'
 
-# Usage rq <job-script>
+# README: I use it to make sure my SGE job script is up-to-date 
+# in local git repository before submitting it to the cluster. 
+# Also adds qsub stdout (job number, if successful) and latest git 
+# sha1 to JobInfo.txt file (hard-coded). 
+# TODO: A Lot! 
+# Usage gitsub.rb <job-script>
 
 # Basic check for args - will replace by optparse later
 if ARGV.length != 1
