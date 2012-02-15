@@ -7,11 +7,8 @@
 
 # Accept three args - pname, o/p dirname, sampling interval 
 # Find PIDs for matching pname; loop through all PIDs
-pname=$1
-# find pid for the process name
-opfile=$2
-interval=$3
-uname=$4
+ppid=$1
+opfile="$ppid.txt"
 touch $opfile
 
 # Loop/Poll continuously at specified interval $3/$interval 
@@ -19,7 +16,7 @@ while true
 do
 
     # Get list of PIDs matching with the 
-    pids=`pgrep -u $uname $pname`
+    pids=`ps -o pid h --ppid $ppid`
     # Get time in unixtimestamp
     nixtime=`date +%s`
     
@@ -31,14 +28,14 @@ do
         for pid in `echo ${pids[@]}`
         do
             mem=`pmap  ${pid} | grep total | awk ' { print $2 } '`
-            echo  "$nixtime, ${pid}, ${mem}" | tee ${opfile}
+            echo  "$nixtime, ${pid}, ${mem}" >> ${opfile}
         done    
         # End-Of Write memory for running pids
     else
         echo "No matching processes/PIDs found"
     fi
 
-sleep $interval
+sleep 1
 done
 # End-Of while loop
 
