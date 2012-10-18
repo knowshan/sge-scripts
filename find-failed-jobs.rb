@@ -59,6 +59,7 @@ class JobSearch
     @options.help = false
     @options.ipfile = "#{ENV['SGE_ROOT']}/#{ENV['SGE_CELL']}/common/accounting"
     @options.user = ENV['USER']
+    @options.since = "1d"
   end
 
   def run
@@ -80,12 +81,11 @@ class JobSearch
     since_regex = /\d+[m|h|d]/
     @optionparser_obj = OptionParser.new do |opts|
       opts.banner = "#{$0} OPTIONS"
-      opts.on('-v', '--verbose', "Verbose Output") { @options.verbose = true }
       opts.on('-h', '--help', "Display help") { @options.help = true }
-      opts.on('-i', '--ipfile IFILE', "SGE Accounting file") { |a| @options.ipfile = a }
-      opts.on('-o', '--opfile OFILE', "Output file") { |a| @options.opfile = a }
-      opts.on('-u', '--user USER', "Job user") { |a| @options.user = a }
-      opts.on('-s', '--since SINCE', since_regex, "Go back in history until N[m|h|d]") { |a| @options.since = a }
+      opts.on('-i', '--ipfile IFILE', "SGE Accounting file    (Optional, Default: #{ENV['SGE_ROOT']}/#{ENV['SGE_CELL']}/common/accounting)") { |a| @options.ipfile = a }
+      opts.on('-o', '--opfile OFILE', "Output file    (Optional, Default: STDOUT)") { |a| @options.opfile = a }
+      opts.on('-u', '--user USER', "Usernme filter    (Optional, Default: #{ENV['USER']})") { |a| @options.user = a }
+      opts.on('-s', '--since SINCE', since_regex, "Go back in history until N[m|h|d]    (Optional, Default: 1d)    (m=Minutes, h=Hours, d=Days)") { |a| @options.since = a }
       opts.separator ""
     end
     # Parse @options passed 
@@ -128,8 +128,8 @@ class JobSearch
     when /\d+d/
       @seconds = since.to_i * 24 * 60 * 60   
     else
-      puts "Unexpected pattern!"
-      @seconds = 0
+      puts "Unexpected pattern encountered in '--since' option!"
+      exit 99
     end
   end
   
@@ -149,6 +149,7 @@ class JobSearch
     end
     ofile << "# Failed jobs for user #{@user} since last #{@options.since}\n"
     ofile << "# SGE Job ID, Job script name\n"
+    count_failed_jobs = 0
     File.foreach(@afilename) do |aline| 
         # Select lines that match following criteria: 
         ## specified-username
@@ -160,9 +161,11 @@ class JobSearch
         	if aarray[3]== @user && (aarray[10].to_i>=epochs) && (aarray[11]!='0' || aarray[12]!='0')
             	#ofile << "#{aarray[5]} #{epochs} #{aarray[10]} #{time}\n"
             	ofile << "#{aarray[5]}, #{aarray[4]}\n"
+              count_failed_jobs = count_failed_jobs + 1 
         	end
         end
     end
+    ofile << "# #{count_failed_jobs} jobs failed for #{@user} in last #{@options.since}\n"
     ofile.close
     # Close output file 
   end
