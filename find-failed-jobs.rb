@@ -57,6 +57,7 @@ class JobSearch
     # set default options 
     @options = OpenStruct.new
     @options.help = false
+    @options.verbose = false
     @options.ipfile = "#{ENV['SGE_ROOT']}/#{ENV['SGE_CELL']}/common/accounting"
     @options.user = ENV['USER']
     @options.since = "1d"
@@ -82,6 +83,7 @@ class JobSearch
     @optionparser_obj = OptionParser.new do |opts|
       opts.banner = "#{$0} OPTIONS"
       opts.on('-h', '--help', "Display help") { @options.help = true }
+      opts.on('-v', '--verbose', "Verbose mode") { @options.verbose = true }
       opts.on('-i', '--ipfile IFILE', "SGE Accounting file    (Optional, Default: #{ENV['SGE_ROOT']}/#{ENV['SGE_CELL']}/common/accounting)") { |a| @options.ipfile = a }
       opts.on('-o', '--opfile OFILE', "Output file    (Optional, Default: STDOUT)") { |a| @options.opfile = a }
       opts.on('-u', '--user USER', "Usernme filter    (Optional, Default: #{ENV['USER']})") { |a| @options.user = a }
@@ -135,7 +137,7 @@ class JobSearch
   
   # Real command - where accounting file is parsed 
   def process_command
-    puts "# #{$0} #{@options.to_s}"
+    puts "# #{$0} #{@options.to_s}" if @options.verbose
     # Get current time in epochs
     time = Time.now
     epochs = time.gmtime.to_i
@@ -147,8 +149,8 @@ class JobSearch
     else
       ofile = STDOUT
     end
-    ofile << "# Failed jobs for user #{@user} since last #{@options.since}\n"
-    ofile << "# SGE Job ID, Job script name\n"
+    ofile << "# Failed jobs for user #{@user} since last #{@options.since}\n" if @options.verbose
+    ofile << "# SGE Job ID, Job script name\n" if @options.verbose
     count_failed_jobs = 0
     File.foreach(@afilename) do |aline| 
         # Select lines that match following criteria: 
@@ -165,7 +167,7 @@ class JobSearch
         	end
         end
     end
-    ofile << "# #{count_failed_jobs} jobs failed for #{@user} in last #{@options.since}\n"
+    ofile << "# #{count_failed_jobs} jobs failed for #{@user} in last #{@options.since}\n" if @options.verbose
     ofile.close
     # Close output file 
   end
