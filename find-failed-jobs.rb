@@ -20,8 +20,8 @@
 #   'optparse'
 #   'ostruct'
 # == TODO
-#   Improve skeleton and instance variable usage 
-#   Setting stdout as a default during initialization  
+#   Improve skeleton and instance variable usage
+#   Setting stdout as a default during initialization 
 # 
 # Example line from accounting file which needs to be parsed: 
 # compute.q:compute-0-6.local:pavgi:pavgi:galaxy_2503.sh:8070699:sge:0:1311868550:1311868559:1311875460:100:138:6901:0.000000:0.001999:0.000000:0:0:0:0:574:0:0:0.000000:0:0:0:0:43:2:NONE:defaultdepartment:NONE:1:0:6888.600000:511.570799:9.135190:-u pavgi -l h_rt=7200,h_vmem=2G,s_rt=6900,virtual_free=2G:0.000000:NONE:145149952.000000:0:0
@@ -45,7 +45,7 @@
 
 require 'optparse'
 require 'ostruct'
-
+require 'time'
 
 class JobSearch
   VERSION="1.0.0"
@@ -150,26 +150,40 @@ class JobSearch
       ofile = STDOUT
     end
     ofile << "# Failed jobs for user #{@user} since last #{@options.since}\n" if @options.verbose
-    ofile << "# SGE Job ID, Job script name\n" if @options.verbose
+    ofile << "# SGE Job ID,Job script name,Requested Memory,Used Memory,Requested run-time,Actual walltime\n" if @options.verbose
     count_failed_jobs = 0
     File.foreach(@afilename) do |aline| 
-        # Select lines that match following criteria: 
-        ## specified-username
-        ## && (completed/end-time in last n minutes #{epochs})
-        ## && (failed status is non-zero || exit status is non-zero)
-        if aline !~ /#/
-            aarray = aline.split(":")
-            wallclock = aarray[10].to_i - aarray[9].to_i
-        	if aarray[3]== @user && (aarray[10].to_i>=epochs) && (aarray[11]!='0' || aarray[12]!='0')
-            	#ofile << "#{aarray[5]} #{epochs} #{aarray[10]} #{time}\n"
-            	ofile << "#{aarray[5]}, #{aarray[4]}\n"
-              count_failed_jobs = count_failed_jobs + 1 
-        	end
+      # Select lines that match following criteria: 
+      ## specified-username
+      ## && (completed/end-time in last n minutes #{epochs})
+      ## && (failed status is non-zero || exit status is non-zero)
+      if aline !~ /#/
+        aarray = aline.split(":")
+        wallclock = aarray[10].to_i - aarray[9].to_i
+        s_rt = aarray[39].slice(/(s_rt=)([\d]+)/,2).to_i # get requested s_rt
+        h_rt = aarray[39].slice(/(h_rt=)([\d]+)/,2).to_i # get requested h_rt
+        h_vmem = aarray[39].slice(/(h_vmem=)([[:alnum:]]+)/,2) # get requested h_vmem
+        failure = wallclock.between?(s_rt,h_rt+2) ? "Reached max. run-time limit #{seconds_to_units(h_rt)}" : "Reached max. memory limit #{h_vmem}"
+        if aarray[3]== @user && (aarray[10].to_i>=epochs) && (aarray[11]!='0' || aarray[12]!='0')
+          #ofile << "#{aarray[5]} #{epochs} #{aarray[10]} #{time}\n"
+          ofile << "#{aarray[5]},#{aarray[4]},#{h_vmem},#{aarray[42]},#{h_rt},#{wallclock},#{failure}\n"
+          count_failed_jobs = count_failed_jobs + 1 
         end
+      end
     end
     ofile << "# #{count_failed_jobs} jobs failed for #{@user} in last #{@options.since}\n" if @options.verbose
     ofile.close
     # Close output file 
+  end
+
+  # from http://stackoverflow.com/a/6552812
+  def seconds_to_units(seconds)
+    '%d hours %d minutes %d seconds' %
+    # the .reverse lets us put the larger units first for readability
+    [60,60].reverse.inject([seconds]) {|result, unitsize|
+      result[0,0] = result.shift.divmod(unitsize)
+      result
+    }
   end
   
   def output_help
