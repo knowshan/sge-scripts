@@ -162,7 +162,7 @@ class JobSearch
         wallclock = aarray[10].to_i - aarray[9].to_i
         s_rt = aarray[39].slice(/(s_rt=)([\d]+)/,2).to_i # get requested s_rt
         h_rt = aarray[39].slice(/(h_rt=)([\d]+)/,2).to_i # get requested h_rt
-        h_vmem = aarray[39].slice(/(h_vmem=)([[:alnum:]]+)/,2) # get requested h_vmem
+        h_vmem = aarray[39].slice(/(h_vmem=)([[:alnum:]]+\.?[[:alnum:]]+)/,2) # get requested h_vmem
         failure = wallclock.between?(s_rt,h_rt+2) ? "Reached max. run-time limit #{seconds_to_units(h_rt)}" : "Reached max. memory limit #{h_vmem}"
         if aarray[3]== @user && (aarray[10].to_i>=epochs) && (aarray[11]!='0' || aarray[12]!='0')
           #ofile << "#{aarray[5]} #{epochs} #{aarray[10]} #{time}\n"
