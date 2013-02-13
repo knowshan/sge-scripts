@@ -1,40 +1,42 @@
 # /bin/bash 
 
 # README
-# Run this script by passing four command-line args
-#  process name, output directory (deletes existing files in that dir), polling interval and user name 
+# Accept a PID (typically 'root' bash process id) and find out
+# memory consumed by the given 'root' process id and it's family.
 
 
-# Accept three args - pname, o/p dirname, sampling interval 
-# Find PIDs for matching pname; loop through all PIDs
-ppid=$1
-opfile="$ppid.txt"
+function memtrack(){ 
+  # Accept ppid
+  ppid=$1
+  # pdet = Process command + Process ID
+  pdet=`ps -o cmd h --pid $ppid`.$ppid
+  # Record total memory used by the given ppid
+  mem=`pmap  ${ppid} | grep total | awk ' { print $2 } '`
+  nixtime=`date +%s`
+  echo  "$nixtime, ${pdet}, ${mem}" >> ${opfile}
+  # Find it's children 
+  cids=`ps -o pid h --ppid $ppid`;
+  # Recusrive call to memtrack if a child/children are found
+  if [ -n "${cids}" ]; then 
+    for cid in `echo ${cids[@]}`; 
+    do 
+      memtrack $cid; 
+    done; 
+  ## else
+    ## echo "No Dynasty"; 
+  fi
+  ## echo "Stack cleared.."; 
+}
+
+# Get shell pid - $PPID
+shell_pid=$1
+opfile="$shell_pid.txt"
 touch $opfile
 
-# Loop/Poll continuously at specified interval $3/$interval 
+# Loop/Poll continuously using memtrack
 while true
 do
-
-    # Get list of PIDs matching with the 
-    pids=`ps -o pid h --ppid $ppid`
-    # Get time in unixtimestamp
-    nixtime=`date +%s`
-    
-    # Write nixtime, pid, memory
-    # Check if pids exist
-    if [ -n "${pids}" ]; then
-        # Iterate through pids
-        # Start-Of Write memory for running pids
-        for pid in `echo ${pids[@]}`
-        do
-            mem=`pmap  ${pid} | grep total | awk ' { print $2 } '`
-            echo  "$nixtime, ${pid}, ${mem}" >> ${opfile}
-        done    
-        # End-Of Write memory for running pids
-    else
-        echo "No matching processes/PIDs found"
-    fi
-
+  memtrack $shell_pid
 sleep 1
 done
 # End-Of while loop
